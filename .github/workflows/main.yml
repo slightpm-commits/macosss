@@ -1,4 +1,4 @@
-name: macos-latest-autologin
+name: macos-latest-bypass
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ jobs:
       - name: MyData Hazirlik
         run: |
           mkdir -p ~/Desktop/mydata
-          echo "Giris yapildi kanka!" > ~/Desktop/mydata/not.txt
+          echo "Bypass Basarili Tertip!" > ~/Desktop/mydata/not.txt
 
       - name: Setup Ngrok
         run: |
@@ -21,15 +21,16 @@ jobs:
           NGROK_PATH=$(which ngrok)
           $NGROK_PATH config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
 
-      - name: VNC ve Otomatik Giris Ayari
+      - name: Kilit Ekranini Parcala
         run: |
-          # VNC'yi aktif et
+          # VNC'yi kur ve sifreyi bas
           sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvncpw -vncpw Ed0kaleen!2024 -restart -agent -privs -all
           
-          # 'runner' kullanicisi icin otomatik girisi zorla (Kilit ekranini bypass eder)
-          sudo python3 -c "import os; os.system('defaults write /Library/Preferences/com.apple.loginwindow autoLoginUser -string runner')"
+          # Kilit ekranini (Lock Screen) tamamen devre disi birakiyoruz
+          sudo defaults write /Library/Preferences/com.apple.loginwindow autoLoginUser -string runner
+          sudo defaults write /Library/Preferences/com.apple.loginwindow GuestEnabled -bool NO
           
-          # noVNC kurulumu
+          # noVNC Klonlama
           git clone https://github.com/novnc/noVNC.git ~/noVNC
           git clone https://github.com/novnc/websockify.git ~/noVNC/utils/websockify
           
@@ -40,14 +41,15 @@ jobs:
         run: |
           NGROK_PATH=$(which ngrok)
           nohup $NGROK_PATH http 6080 --log=stdout > /dev/null &
-          sleep 30 # Sequoia'nin kendine gelmesi icin uzun bekleme
-          curl -s http://localhost:4040/api/tunnels | python3 -c "import sys, json; print('\n--- GIRIS GARANTILI LINK ---\n' + json.load(sys.stdin)['tunnels'][0]['public_url'] + '/vnc.html?autoconnect=true&password=Ed0kaleen!2024\n-----------------------')"
+          # Sistemin kendine gelmesi icin 40 saniye (Sequoia cok agir)
+          sleep 40
+          curl -s http://localhost:4040/api/tunnels | python3 -c "import sys, json; print('\n--- GIRIS LINKI ---\n' + json.load(sys.stdin)['tunnels'][0]['public_url'] + '/vnc.html?autoconnect=true&password=Ed0kaleen!2024\n-----------------------')"
 
       - name: Stay Online (71 Hours)
         run: |
           start_time=$(date +%s)
           while [ $(($(date +%s) - start_time)) -lt 255600 ]; do
-            echo "Sequoia Nobetinde... $(date)"
+            echo "Sequoia Bypass Nobetinde... $(date)"
             sleep 300
           done
           
