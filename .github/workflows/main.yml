@@ -1,0 +1,55 @@
+name: macos-latest-ngrok
+
+on:
+  workflow_dispatch:
+
+jobs:
+  macos-job:
+    # En guncel surum (Sequoia) ile devam
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: MyData Klasorunu Hazirla
+        run: |
+          mkdir -p ~/Desktop/mydata
+          echo "Ngrok Operasyonu Basladi!" > ~/Desktop/mydata/not.txt
+
+      - name: Setup Ngrok
+        run: |
+          # Ngrok'u brew ile tertemiz kuruyoruz
+          brew install ngrok/ngrok/ngrok
+          # Yolu sistemden bulup tokeni cakiyoruz
+          NGROK_PATH=$(which ngrok)
+          $NGROK_PATH config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+
+      - name: VNC ve Masaustu Hazirligi
+        run: |
+          # VNC aktif etme ve sifre
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart -activate -configure -access -on -clientopts -setvncpw -vncpw Ed0kaleen!2024 -restart -agent -privs -all
+          
+          # noVNC araclarini kur
+          brew install novnc websockify
+          
+          # Yeni nesil mac'lerde (ARM) share klasoru yolu budur
+          WEBSOCK_PATH=$(which websockify)
+          nohup $WEBSOCK_PATH --web /opt/homebrew/share/novnc 6080 localhost:5900 > /dev/null 2>&1 &
+
+      - name: Ngrok Tunelini Atesle
+        run: |
+          NGROK_PATH=$(which ngrok)
+          # 6080 portunu dunya aciyoruz
+          nohup $NGROK_PATH http 6080 --log=stdout > /dev/null &
+          sleep 15
+          # Baglanti linkini loglara basiyoruz
+          curl -s http://localhost:4040/api/tunnels | python3 -c "import sys, json; print('\n--- LINK BURADA TERTIP ---\n' + json.load(sys.stdin)['tunnels'][0]['public_url'] + '/vnc.html\n-----------------------')"
+
+      - name: Stay Online (71 Hours)
+        run: |
+          start_time=$(date +%s)
+          while [ $(($(date +%s) - start_time)) -lt 255600 ]; do
+            echo "Latest macOS Nobetinde... $(date)"
+            sleep 300
+          done
+          
